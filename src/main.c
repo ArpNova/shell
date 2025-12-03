@@ -5,6 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 
+
+char *buildin_str[] = {
+    "cd",
+    "help",
+    "exit"
+};
+
 int lsh_launch(char **args){
     pid_t pid, wpid;
     int status;
