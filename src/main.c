@@ -5,7 +5,16 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+    function declarations for builtin shell commands
+*/
+int lsh_cd(char **args);
+int lsh_help(char **args);
+int lsh_exit(char **args);
 
+/*
+    list of builtin commands
+*/
 char *buildin_str[] = {
     "cd",
     "help",
