@@ -95,9 +95,9 @@ int lsh_execute(char **args){
     for(int i = 0; i < lsh_num_biultins(); i++){
         if(strcmp(args[0], builtin_str[i]) == 0){
             return (*builtin_func[i])(args);
-        }
-        return lsh_launch(args);
+        }     
     }
+    return lsh_launch(args);
 }
 
 #define LSH_TOK_BUFSIZE 64
