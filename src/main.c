@@ -10,8 +10,9 @@
 
 //signal handler
 void sigint_handler(int signo){
-    printf("\n>");
+    printf("\n> ");
     fflush(stdout);
+    
 }
 
 
@@ -157,7 +158,11 @@ char *lsh_read_line(void){
 
     while(1){
         c = getchar();
-        if(c == EOF || c == '\n'){
+
+        //end of file handler
+        if(c == EOF)exit(EXIT_SUCCESS);
+        
+        if(c == '\n'){
             buffer[position] = '\0';
             return buffer;
         } 
@@ -181,12 +186,14 @@ void lsh_loop(void){
     char *line;
     char **args;
     int status;
+    
     do
     {   
         printf("> ");
         line = lsh_read_line();
         args = lsh_split_line(line);
         status = lsh_execute(args);
+        
     } while (status);
     free(line);
     free(args);
