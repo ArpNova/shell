@@ -1,9 +1,19 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
+
+//signal handler
+void sigint_handler(int signo){
+    printf("\n>");
+    fflush(stdout);
+}
+
 
 /*
     function declarations for builtin shell commands
@@ -183,6 +193,15 @@ void lsh_loop(void){
 }
 
 int main(int argc, char **argv){
+
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+
+    if(sigaction(SIGINT,&sa, NULL) == -1){
+        perror("lsh: signal");
+    }
 
     lsh_loop();
 
