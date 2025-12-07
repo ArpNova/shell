@@ -91,9 +91,22 @@ int lsh_launch(char **args)
 {
     pid_t pid, wpid;
     int status;
+    int background = 0;//0 = foreground, 1 = background
+    
+    //check for "&"
+    int i = 0;
+    while(args[i] != NULL){
+        i++;
+    }
+    if(i > 0 && strcmp(args[i-1], "&") == 0){
+        background = 1;
+        args[i-1] = NULL;
+    }
 
-    // trun the flag on before forking
-    is_running_command = 1;
+    // ONLY set this for FOREGROUND commands.
+    if(!background){
+        is_running_command = 1;
+    }
 
     pid = fork();
     if (pid == 0)
@@ -174,17 +187,23 @@ int lsh_launch(char **args)
     else if (pid < 0)
     {
         perror("lsh");
+        is_running_command = 0;
     }
     else
-    {
-        do
-        {
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    { // parent process
+        if(!background){
+            //foreground: wait for the child to finish
+            do{
+                wpid = waitpid(pid, &status, WUNTRACED);
+            }while (!WIFEXITED(status) && !WIFSIGNALED(status));
+            
+            is_running_command = 0;
+        }
+        else{
+            //background
+            printf("[Process Started] PID: %d\n", pid);
+        }
     }
-
-    // turn the flag off after the child is done
-    is_running_command = 0;
 
     return 1;
 }
@@ -375,6 +394,13 @@ void lsh_loop(void)
 
     do
     {
+        // Zombie Reaper 
+        int zombie_status;
+        pid_t zombie_pid;
+        while((zombie_pid = waitpid(-1, &zombie_status, WNOHANG)) > 0){
+            printf("[Process %d exited]\n", zombie_pid);
+        } 
+
         printf("> ");
         line = lsh_read_line();
         args = lsh_split_line(line);
