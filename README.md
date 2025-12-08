@@ -5,6 +5,7 @@ This is a custom implementation of a Unix shell, written from scratch in C. The 
 ## Features
 
 -   **REPL (Read-Eval-Print Loop)**: The shell runs in a continuous loop, waiting for user input.
+-   **Custom Prompt**: Displays the current user, hostname, and working directory.
 -   **Input Parsing**: Reads commands from stdin and tokenizes them into arguments.
 -   **Command Execution**: Executes commands by forking processes and using `execvp`.
 -   **Built-in Commands**:
@@ -22,9 +23,13 @@ This is a custom implementation of a Unix shell, written from scratch in C. The 
     -   `&&`: Execute the second command only if the first succeeds.
     -   `||`: Execute the second command only if the first fails.
 -   **Wildcard Expansion**: Support for `*` and `?` using globbing.
--   **Environment Variables**: Support for `$VAR` expansion.
+-   **Environment Variables**: 
+    -   Support for `$VAR` expansion.
+    -   Support for `$?` to get the exit status of the last command.
 -   **Background Processes**: Support for running commands in the background using `&`.
 -   **Signal Handling**: Graceful handling of `SIGINT` (Ctrl+C).
+-   **Zombie Process Reaping**: Automatically cleans up terminated background processes.
+-   **Script Execution**: Can execute commands from a file provided as an argument.
 
 ## Project Structure
 
@@ -44,17 +49,23 @@ To compile the shell, use a C compiler like `gcc`:
 gcc src/main.c -o myshell
 ```
 
-To run the shell:
+To run the shell interactively:
 
 ```bash
 ./myshell
+```
+
+To run a script file:
+
+```bash
+./myshell script.txt
 ```
 
 ## Implementation Details
 
 The shell follows a standard lifecycle:
 
-1.  **Read**: Reads a line of input from the user.
+1.  **Read**: Reads a line of input from the user or file.
 2.  **Parse**: Splits the line into tokens.
 3.  **Expand**: Expands environment variables and wildcards.
 4.  **Execute**:
