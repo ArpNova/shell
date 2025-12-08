@@ -520,12 +520,13 @@ int lsh_execute(char **args)
     //expand wildcards
     char **expanded_args = lsh_expand_wildcards(env_args);
 
+    //cleanup snapshot
+    int env_count = 0;
+    while(env_args[env_count] != NULL){
+        free(env_args[env_count]);
+        env_count++;
+    }
     free(env_args);
-
-    // //cleanup snapshot
-    // int env_count = 0;
-    // while(env_args[env_count] != NULL)env_count++;
-    // for(int i = 0; i<env_count; i++)free(env_args[i]);
     
 
     int count = 0;
@@ -564,25 +565,53 @@ char **lsh_split_line(char *line)
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, LSH_TOK_DELIM);
-    while (token != NULL)
-    {
-        tokens[position] = token;
-        position++;
-        if (position >= bufsize)
-        {
-            bufsize += LSH_TOK_BUFSIZE;
-            tokens = realloc(tokens, bufsize * sizeof(char *));
-            if (!tokens)
-            {
-                fprintf(stderr, "lsh: allocation error\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-        token = strtok(NULL, LSH_TOK_DELIM);
+    token = malloc(strlen(line) + 1);
+    if(!token){
+        fprintf(stderr, "lsh: allocation error\n");
+        exit(EXIT_FAILURE);
     }
 
-    tokens[position] = NULL;
+    int i = 0;//index for input 'line'
+    int j = 0;//index for corrent 'token' buffer
+    int in_quote = 0; //falg for quotes
+
+    while(line[i] != '\0'){
+        char c = line[i];
+        if(c == '"'){
+            in_quote = !in_quote;
+        }
+        else if(strchr(LSH_TOK_DELIM, c) != NULL && !in_quote){
+            //found a delimiter and we are not in quotes
+            if(j>0){
+                token[j] = '\0';
+                tokens[position++] = strdup(token);
+                j = 0;
+
+                if(position >= bufsize){
+                    bufsize += LSH_TOK_BUFSIZE;
+                    tokens = realloc(tokens, bufsize*sizeof(char*));
+                    if(!tokens){
+                        fprintf(stderr, "lsh: allocation error\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+        }
+        else{
+            token[j] = c;
+            j++;
+        }
+        i++;
+    }
+
+    if(j>0){
+        token[j] = '\0';
+        tokens[position++] = strdup(token);
+    }
+
+    free(token);
+    tokens[position] =NULL;
+
     return tokens;
 }
 
@@ -652,7 +681,17 @@ void lsh_loop(void)
         status = lsh_execute(args);
 
         free(line);
-        free(args);
+        
+        int i = 0;
+        if(args != NULL){
+            while (args[i] != NULL)
+            {
+                free(args[i]);
+                i++;
+            }
+            free(args);
+        }
+        
     } while (status);
     
 }
