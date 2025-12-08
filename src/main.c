@@ -50,12 +50,58 @@ void sigint_handler(int signo)
 char *builtin_str[] = {
     "cd",
     "help",
-    "exit"};
+    "exit",
+    "export",
+    "unset"
+};
+
+int lsh_export(char **args){
+    if(args[1] == NULL){
+        fprintf(stderr, "lsh: expected argument to \"export\"\n");
+    }
+
+    //split KEY=VALUE string
+    char *arg = args[1];
+    char *equal_sign = strchr(arg, '=');
+
+    if(equal_sign == NULL){
+        fprintf(stderr, "lsh: invalid format (use KEY=VALUE)\n");
+        return 1;
+    }
+    //terminate key string at the '='
+    *equal_sign = '\0';
+
+    char *key = arg;
+    char *value = equal_sign + 1;
+
+    if(setenv(key, value, 1) != 0){
+        perror("lsh");
+    }
+    return 1;
+}
+
+
+int lsh_unset(char **args){
+    if(args[1] == NULL){
+        fprintf(stderr, "lsh: expected argument to \"unset\"\n");
+        return 1;
+    }
+
+    if(unsetenv(args[1]) != 0){
+        perror("lsh");
+    }
+
+    return 1;
+}
+
 
 int (*builtin_func[])(char **) = {
     &lsh_cd,
     &lsh_help,
-    &lsh_exit};
+    &lsh_exit,
+    &lsh_export,
+    &lsh_unset
+};
 
 int lsh_num_biultins()
 {
@@ -424,6 +470,42 @@ int lsh_launch_pipeline(char **args){
 }
 
 
+char **lsh_expand_env_vars(char **args){
+    int bufsize = 64;
+    int position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+
+    if(!tokens){
+        fprintf(stderr, "lsh: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for(int i = 0; args[i] != NULL; i++){
+        char *arg = args[i];
+        
+        //'$' check
+        if(arg[0] == '$' && strlen(arg) > 1){
+            char *env_val = getenv(arg+1);
+
+            if(env_val != NULL){
+                tokens[position++] = strdup(env_val);
+            }else{
+                tokens[position++] = strdup("");
+            }
+        }else{
+            tokens[position++] = strdup(arg);
+        }
+
+        if(position >= bufsize){
+            bufsize += 64;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+        }
+    }
+
+    tokens[position] = NULL;
+    return tokens;
+}
+
 int lsh_execute(char **args)
 {
     if (args[0] == NULL)
@@ -432,8 +514,19 @@ int lsh_execute(char **args)
         return 1;
     }
 
+    //expand env
+    char **env_args = lsh_expand_env_vars(args);
+
     //expand wildcards
-    char **expanded_args = lsh_expand_wildcards(args);
+    char **expanded_args = lsh_expand_wildcards(env_args);
+
+    free(env_args);
+
+    // //cleanup snapshot
+    // int env_count = 0;
+    // while(env_args[env_count] != NULL)env_count++;
+    // for(int i = 0; i<env_count; i++)free(env_args[i]);
+    
 
     int count = 0;
     while(expanded_args[count] != NULL)count++;
