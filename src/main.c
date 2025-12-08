@@ -8,11 +8,21 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <glob.h>
+
+#ifndef GLOB_TILDE
+/* Some platforms (non-GNU) don't provide GLOB_TILDE; define as no-op flag */
+#define GLOB_TILDE 0
+#endif
 
 volatile sig_atomic_t is_running_command = 0;
 int last_exit_status = 0;
 
+//forward declarations
 int lsh_execute(char **args);
+int lsh_logic_split(char **args);
+int lsh_launch_pipeline(char **args);
+int lsh_launch(char **args);
 
 // signal handler
 void sigint_handler(int signo)
@@ -259,22 +269,22 @@ int lsh_logic_split(char **args){
     }
 
     if(split_idx == -1){
-        return lsh_launch(args);
+        return lsh_launch_pipeline(args);
     }
 
     args[split_idx] = NULL;
     char **cmd2 = &args[split_idx + 1];
 
-    int loop_status = lsh_execute(args);
+    int loop_status = lsh_logic_split(args);
 
     if(type == 1){
         if(last_exit_status == 0){
-            return lsh_execute(cmd2);
+            return lsh_logic_split(cmd2);
         }
     }
     else if(type == 2){
         if(last_exit_status != 0){
-            return lsh_execute(cmd2);
+            return lsh_logic_split(cmd2);
         }
     }
 
@@ -346,6 +356,73 @@ int lsh_launch_pipe(char **args, int pipe_pos){
     
 }
 
+//wildcards
+char **lsh_expand_wildcards(char **args){
+    int bufsize = 64;
+    int position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+
+    if(!tokens){
+        fprintf(stderr, "lsh: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for(int i = 0; args[i] != NULL; i++){
+        if(strchr(args[i], '*') != NULL || strchr(args[i], '?') != NULL){
+            glob_t glob_result;
+
+            int return_value = glob(args[i], GLOB_NOCHECK | GLOB_TILDE, NULL, &glob_result);
+
+            if(return_value == 0){
+                for(size_t j = 0; j < glob_result.gl_pathc; j++){
+                    tokens[position++] = strdup(glob_result.gl_pathv[j]);
+
+                    if(position >= bufsize){
+                        bufsize += 64;
+                        tokens = realloc(tokens, bufsize * sizeof(char*));
+                    }
+                }
+            }else{
+                tokens[position++] = strdup(args[i]);
+            }
+            globfree(&glob_result);
+        }else{
+            tokens[position++] = strdup(args[i]);
+
+            if(position >= bufsize){
+                bufsize += 64;
+                tokens = realloc(tokens, bufsize * sizeof(char*));
+            }
+        }
+    }
+    tokens[position] = NULL;
+    return tokens;
+}
+
+int lsh_launch_pipeline(char **args){
+    if(args[0] == NULL)return 1;
+
+    //scan pipe
+    for(int i = 0; args[i] != NULL; i++){
+        if(strcmp(args[i], "|") == 0){
+            if(args[i+1] == NULL){
+                fprintf(stderr, "lsh: pipe missing second command\n");
+                return 1;
+            }
+            return lsh_launch_pipe(args, i);
+        }
+    }
+
+    //check builtins
+    for(int i = 0; i < lsh_num_biultins(); i++){
+        if(strcmp(args[0], builtin_str[i]) == 0){
+            return (*builtin_func[i])(args);
+        }
+    }
+
+    //normal launch
+    return lsh_launch(args);
+}
 
 
 int lsh_execute(char **args)
@@ -356,26 +433,29 @@ int lsh_execute(char **args)
         return 1;
     }
 
-    //scan for pipe
-    for(int i = 0; args[i] != NULL; i++){
-        if(strcmp(args[i], "|") == 0){
-            if(args[i+1] == NULL){
-                fprintf(stderr, "lsh: ppipe missing second command\n");
-                return 1;
-            }
-            return lsh_launch_pipe(args, i);
-        }
+    //expand wildcards
+    char **expanded_args = lsh_expand_wildcards(args);
+
+    int count = 0;
+    while(expanded_args[count] != NULL)count++;
+
+    char **cleanup_list = malloc((count + 1)*sizeof(char*));
+    for(int i = 0; i < count; i++){
+        cleanup_list[i] = expanded_args[i];
+    }
+    cleanup_list[count] = NULL;
+
+    int status = lsh_logic_split(expanded_args);
+
+    //clean-up
+    for(int i = 0; i < count; i++){
+        free(cleanup_list[i]);
     }
 
-    //check builtins
-    for (int i = 0; i < lsh_num_biultins(); i++)
-    {
-        if (strcmp(args[0], builtin_str[i]) == 0)
-        {
-            return (*builtin_func[i])(args);
-        }
-    }
-    return lsh_logic_split(args);
+    free(cleanup_list);
+    free(expanded_args);
+    
+    return status;
 }
 
 #define LSH_TOK_BUFSIZE 64
