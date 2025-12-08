@@ -41,12 +41,7 @@ void sigint_handler(int signo)
     }
 }
 
-
-
-
-/*
-    list of builtin commands
-*/
+//list of builtin commands
 char *builtin_str[] = {
     "cd",
     "help",
@@ -634,8 +629,10 @@ char *lsh_read_line(void)
         c = getchar();
 
         // end of file check
-        if (c == EOF)
-            exit(EXIT_SUCCESS);
+        if (c == EOF){
+            free(buffer);
+            return NULL;
+        }
 
         if (c == '\n')
         {
@@ -677,6 +674,11 @@ void lsh_loop(void)
 
         printf("> ");
         line = lsh_read_line();
+        if(line == NULL){
+            printf("\n");
+            exit(EXIT_SUCCESS);
+        }
+
         args = lsh_split_line(line);
         status = lsh_execute(args);
 
@@ -691,7 +693,7 @@ void lsh_loop(void)
             }
             free(args);
         }
-        
+
     } while (status);
     
 }
