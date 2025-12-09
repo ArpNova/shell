@@ -681,7 +681,18 @@ char *lsh_read_line(FILE *stream)
 
     while(1){
         char c;
-        if(read(STDIN_FILENO, &c, 1) == -1)break;
+        if(read(STDIN_FILENO, &c, 1) <= 0)break;
+
+        //ctrl+D
+        if(c == 4){
+            if(strlen(buffer) == 0){
+                free(buffer);
+                disableRawMode();
+                return NULL;
+            }else{
+                continue;
+            }
+        }
 
         //esc sequence
         if(c == '\x1b'){
@@ -824,7 +835,7 @@ char *lsh_read_line(FILE *stream)
         else if(c == '\t'){
             //tabs(future feature)
         }
-        else{
+        else if(isprint(c)){
             //regular char
             int len = strlen(buffer);
             if(position == len){
