@@ -1,85 +1,109 @@
-# Simple Shell in C
+# arsh - A Custom Unix Shell in C
 
-This is a custom implementation of a Unix shell, written from scratch in C. The project aims to understand the inner workings of a shell, including process creation, execution, and signal handling.
+`arsh` is a robust, custom implementation of a Unix shell, written from scratch in C. This project demonstrates a deep understanding of system programming concepts, including process management, signal handling, and inter-process communication.
 
 ## Features
 
--   **REPL (Read-Eval-Print Loop)**: The shell runs in a continuous loop, waiting for user input.
--   **Custom Prompt**: Displays the current user, hostname, and working directory.
--   **Input Parsing**: Reads commands from stdin and tokenizes them into arguments.
--   **Command Execution**: Executes commands by forking processes and using `execvp`.
+-   **Interactive REPL**: A continuous Read-Eval-Print Loop that accepts and executes user commands.
+-   **Custom Prompt**: informative prompt displaying user, hostname, and current working directory.
+-   **Command Execution**: Seamless execution of external programs using `fork` and `execvp`.
 -   **Built-in Commands**:
-    -   `cd`: Change directory.
-    -   `help`: Display help information.
-    -   `exit`: Exit the shell.
-    -   `export`: Set environment variables (KEY=VALUE).
-    -   `unset`: Unset environment variables.
--   **Input/Output Redirection**:
-    -   `>`: Redirect output to a file (overwrite).
-    -   `>>`: Redirect output to a file (append).
-    -   `<`: Redirect input from a file.
--   **Pipes**: Support for `|` to pipe output of one command to another.
+    -   `cd`: Change the current working directory.
+    -   `help`: Display information about the shell.
+    -   `exit`: Terminate the shell session.
+    -   `export`: Set environment variables (e.g., `KEY=VALUE`).
+    -   `unset`: Remove environment variables.
+-   **I/O Redirection**:
+    -   `>`: Redirect standard output to a file (overwrite).
+    -   `>>`: Redirect standard output to a file (append).
+    -   `<`: Redirect standard input from a file.
+-   **Piping**: Chain commands using `|` to pass output from one process as input to another.
 -   **Logical Operators**:
-    -   `&&`: Execute the second command only if the first succeeds.
-    -   `||`: Execute the second command only if the first fails.
--   **Wildcard Expansion**: Support for `*` and `?` using globbing.
--   **Environment Variables**: 
-    -   Support for `$VAR` expansion.
-    -   Support for `$?` to get the exit status of the last command.
--   **Background Processes**: Support for running commands in the background using `&`.
--   **Signal Handling**: Graceful handling of `SIGINT` (Ctrl+C).
--   **Zombie Process Reaping**: Automatically cleans up terminated background processes.
--   **Script Execution**: Can execute commands from a file provided as an argument.
--   **Command History**: Navigate through previous commands using Up/Down arrow keys.
--   **Line Editing**: Support for Left/Right arrow keys, Home, End, and Backspace for editing the current command line.
+    -   `&&`: Execute the following command only if the previous one succeeds.
+    -   `||`: Execute the following command only if the previous one fails.
+-   **Wildcard Expansion**: Globbing support for `*` and `?` patterns.
+-   **Environment Variables**:
+    -   Expand variables using `$VAR`.
+    -   Access exit status of the last command with `$?`.
+-   **Job Control**:
+    -   Run commands in the background with `&`.
+    -   Automatic reaping of zombie processes.
+-   **Signal Handling**: Graceful handling of signals like `SIGINT` (Ctrl+C).
+-   **Script Execution**: Ability to run commands from a script file provided as an argument.
+-   **Line Editing & History**:
+    -   Navigate command history with Up/Down arrow keys.
+    -   Edit the current line using Left/Right arrows, Home, End, and Backspace.
 
 ## Project Structure
 
--   `src/main.c`: Contains the complete source code for the shell, including:
-    -   Main loop (REPL).
-    -   Input reading and parsing.
-    -   Command execution logic.
-    -   Built-in command implementations.
-    -   Signal handling.
-    -   Wildcard and environment variable expansion.
+The codebase is organized for modularity and maintainability:
 
-## How to Build and Run
-
-To compile the shell, use a C compiler like `gcc`:
-
-```bash
-gcc src/main.c -o myshell
+```
+.
+├── include/        # Header files defining interfaces
+│   ├── builtins.h
+│   ├── executor.h
+│   ├── input.h
+│   ├── parser.h
+│   └── shell.h
+├── src/            # Source code implementations
+│   ├── builtins.c  # Built-in command logic
+│   ├── executor.c  # Process creation and execution
+│   ├── input.c     # Input reading and history management
+│   ├── main.c      # Entry point and main loop
+│   └── parser.c    # Command parsing and tokenization
+├── Makefile        # Build configuration
+└── README.md       # Project documentation
 ```
 
-To run the shell interactively:
+## Getting Started
+
+### Prerequisites
+
+-   GCC (GNU Compiler Collection)
+-   Make
+
+### Build
+
+To compile the project, simply run `make` in the root directory. This will compile the source files and generate the `arsh` executable.
 
 ```bash
-./myshell
+make
 ```
 
-To run a script file:
+To clean up build artifacts (object files and the executable):
 
 ```bash
-./myshell script.txt
+make clean
+```
+
+### Run
+
+Start the shell interactively:
+
+```bash
+./arsh
+```
+
+Execute a script file:
+
+```bash
+./arsh script.txt
 ```
 
 ## Implementation Details
 
-The shell follows a standard lifecycle:
+The shell operates through a structured lifecycle:
 
-1.  **Read**: Reads a line of input from the user or file.
-2.  **Parse**: Splits the line into tokens.
-3.  **Expand**: Expands environment variables and wildcards.
-4.  **Execute**:
-    -   Checks for built-in commands.
-    -   Handles pipes and logical operators.
-    -   Forks and executes external commands.
-    -   Manages input/output redirection.
-
-## Future Improvements
-
--   Tab completion for filenames and commands.
--   More robust error handling.
+1.  **Initialization**: Sets up signal handlers and environment.
+2.  **Read**: Captures user input or reads from a file.
+3.  **Parse**: Tokenizes the input, handling quotes and special characters.
+4.  **Expand**: Processes environment variables and wildcard patterns.
+5.  **Execute**:
+    -   Identifies and runs built-in commands directly.
+    -   Manages pipelines and redirections.
+    -   Forks child processes for external commands.
+    -   Waits for foreground processes to complete.
 
 ## License
 
